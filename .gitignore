@@ -1,0 +1,5 @@
+Gatherer/bin/
+Gatherer/obj/
+packages
+*.user
+*.suo
