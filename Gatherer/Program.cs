@@ -104,14 +104,33 @@ namespace Gatherer
 
         public override IEnumerable<string> GetNewArticles()
         {
-            // TODO
-            throw new NotImplementedException();
+            HtmlDocument htmlDocument = GetPage(BasePage + section);
+            var newLinks = from a in htmlDocument.DocumentNode.Descendants("a")
+                           where a.Attributes.Contains("href") &&
+                                 a.Attributes.Contains("class") &&
+                                 a.Attributes["class"].Value == "story_link" &&
+                                 a.Attributes["href"].Value.Contains("www.theregister.co.uk")
+                           select a.Attributes["href"].Value;
+            return newLinks;
         }
 
         public override bool GetContent(out string content)
         {
-            // TODO
-            throw new NotImplementedException();
+            HtmlDocument htmlDocument = GetPage(section);
+            // Get headline
+            HtmlNode headline = htmlDocument.DocumentNode
+                .SelectSingleNode("//div[contains(@class, 'article_head')]/h1");
+            string header = headline?.InnerText ?? "";
+            // Get article
+            var text = string.Join(
+                Environment.NewLine,
+                (from p in htmlDocument.DocumentNode
+                    .SelectNodeList("//div[@id='body']/p")
+                 select p.InnerText));
+
+            content = header + Environment.NewLine + text;
+            // TODO nextpage
+            return content.Length >= WordLimit;
         }
     }
 
@@ -148,8 +167,7 @@ namespace Gatherer
         private static List<KeyValuePair<SiteType, string>> siteList = new List<KeyValuePair<SiteType, string>>
             {
                 new KeyValuePair<SiteType, string>(SiteType.GUARDIAN, "/uk-news"),
-                //new KeyValuePair<SiteType, string>(SiteType.REGISTER, "")
-                // TODO
+                new KeyValuePair<SiteType, string>(SiteType.REGISTER, "")
             };
 
         private static DB database = new DB("projects.db");
