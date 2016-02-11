@@ -16,22 +16,23 @@ namespace Gatherer
     abstract class Site
     {
         // Members
+        protected string basePage;
         protected string section;
 
         // Properties
 
         /// <summary>
-        /// Minimum amount of words in the article to be gathered.
+        /// Minimum amount of symbols in the article to be gathered.
         /// </summary>
-        public abstract int WordLimit { get; }
+        public abstract int SymbolLimit { get; }
         public abstract string Name { get; }
-        public abstract string BasePage { get; }
         public abstract Encoding PageEncoding { get; }
         public abstract string Language { get; }
 
         // Constructors 
-        public Site(string section)
+        public Site(string basePage, string section)
         {
+            this.basePage = basePage;
             this.section = section;
         }
 
@@ -53,17 +54,16 @@ namespace Gatherer
 
     class Guardian : Site
     {
-        public override int WordLimit { get { return 600; } }
+        public override int SymbolLimit { get { return 600 * 5; } }
         public override string Name { get { return "Guardian"; } }
-        public override string BasePage { get { return "http://www.theguardian.com"; } }
         public override Encoding PageEncoding { get { return Encoding.UTF8; } }
         public override string Language { get { return "English"; } }
 
-        public Guardian(string section) : base(section) { }
+        public Guardian(string basePage, string section) : base(basePage, section) { }
 
         public override IEnumerable<string> GetNewArticles()
         {
-            HtmlDocument htmlDocument = GetPage(BasePage + section);
+            HtmlDocument htmlDocument = GetPage(basePage + section);
             var newLinks = from a in htmlDocument.DocumentNode.Descendants("a")
                            where a.Attributes.Contains("href") &&
                                  a.Attributes.Contains("class") &&
@@ -74,7 +74,7 @@ namespace Gatherer
 
         public override bool GetContent(out string content)
         {
-            HtmlDocument htmlDocument = GetPage(section);
+            HtmlDocument htmlDocument = GetPage(basePage + section);
             // Get headline
             HtmlNode headline = htmlDocument.DocumentNode
                 .SelectSingleNode("//h1[contains(@class, 'content__headline')]");
@@ -88,23 +88,22 @@ namespace Gatherer
                  select p.InnerText));
 
             content = header + Environment.NewLine + text;
-            return content.Length >= WordLimit;
+            return content.Length >= SymbolLimit;
         }
     }
 
     class Register : Site
     {
-        public override int WordLimit { get { return 300; } }
+        public override int SymbolLimit { get { return 300 * 5; } }
         public override string Name { get { return "Register"; } }
-        public override string BasePage { get { return "http://www.theregister.co.uk/"; } }
         public override Encoding PageEncoding { get { return Encoding.UTF8; } }
         public override string Language { get { return "english"; } }
 
-        public Register(string section) : base(section) { }
+        public Register(string basePage, string section) : base(basePage, section) { }
 
         public override IEnumerable<string> GetNewArticles()
         {
-            HtmlDocument htmlDocument = GetPage(BasePage + section);
+            HtmlDocument htmlDocument = GetPage(basePage + section);
             var newLinks = from a in htmlDocument.DocumentNode.Descendants("a")
                            where a.Attributes.Contains("href") &&
                                  a.Attributes.Contains("class") &&
@@ -116,7 +115,7 @@ namespace Gatherer
 
         public override bool GetContent(out string content)
         {
-            HtmlDocument htmlDocument = GetPage(section);
+            HtmlDocument htmlDocument = GetPage(basePage + section);
             // Get headline
             HtmlNode headline = htmlDocument.DocumentNode
                 .SelectSingleNode("//div[contains(@class, 'article_head')]/h1");
@@ -129,23 +128,32 @@ namespace Gatherer
                  select p.InnerText));
 
             content = header + Environment.NewLine + text;
-            // TODO nextpage
-            return content.Length >= WordLimit;
+            // Get multipage content
+            HtmlNode newPage = htmlDocument.DocumentNode
+                .SelectSingleNode("//div[@id='nextpage']/a[@href]");
+            if (newPage != null)
+            {
+                Register nextPage = new Register(basePage, newPage.Attributes["href"].Value);
+                string nextPageContent = null;
+                nextPage.GetContent(out nextPageContent);
+                content = content + Environment.NewLine + nextPageContent;
+            }
+            return content.Length >= SymbolLimit;
         }
     }
 
     static class SiteFactory
     {
-        public static Site CreateSite(SiteType siteType, string section)
+        public static Site CreateSite(SiteType siteType, string basePage, string section="")
         {
             Site site = null;
             switch (siteType)
             {
                 case SiteType.GUARDIAN:
-                    site = new Guardian(section);
+                    site = new Guardian(basePage, section);
                     break;
                 case SiteType.REGISTER:
-                    site = new Register(section);
+                    site = new Register(basePage, section);
                     break;
                 default:
                     throw new NotImplementedException("Wrong site type");
@@ -166,8 +174,8 @@ namespace Gatherer
     {
         private static List<KeyValuePair<SiteType, string>> siteList = new List<KeyValuePair<SiteType, string>>
             {
-                new KeyValuePair<SiteType, string>(SiteType.GUARDIAN, "/uk-news"),
-                new KeyValuePair<SiteType, string>(SiteType.REGISTER, "")
+                new KeyValuePair<SiteType, string>(SiteType.GUARDIAN, "http://www.theguardian.com/uk-news"),
+                new KeyValuePair<SiteType, string>(SiteType.REGISTER, "http://www.theregister.co.uk/")
             };
 
         private static DB database = new DB("projects.db");
