@@ -76,17 +76,16 @@ namespace Gatherer
         {
             HtmlDocument htmlDocument = GetPage(section);
             // Get headline
-            string header = (from div in htmlDocument.DocumentNode.Descendants("div")
-                         where div.Attributes.Contains("class") &&
-                               div.Attributes["class"].Value == "content__standfirst"
-                         select div.InnerText)
-                         .DefaultIfEmpty("")
-                         .FirstOrDefault();
+            HtmlNode headline = htmlDocument.DocumentNode
+                .SelectSingleNode("//h1[contains(@class, 'content__headline')]");
+            string header = headline?.InnerText ?? "";
+
             // Get article
-            string text = (from div in htmlDocument.DocumentNode.SelectNodes("//div[contains(@class,'content__article-body')]")
-                             from p in div.Descendants("p")
-                             select p.InnerText)
-                             .Aggregate((a,b) => a + Environment.NewLine + b);
+            var text = string.Join(
+                Environment.NewLine,
+                (from p in htmlDocument.DocumentNode
+                    .SelectNodeList("//div[contains(@class,'content__article-body')]/p")
+                 select p.InnerText));
 
             content = header + Environment.NewLine + text;
             return content.Length >= WordLimit;
@@ -133,6 +132,14 @@ namespace Gatherer
                     throw new NotImplementedException("Wrong site type");
             }
             return site;
+        }
+    }
+
+    static class Extensions
+    {
+        public static IEnumerable<HtmlNode> SelectNodeList(this HtmlNode node, string xPath)
+        {
+            return node.SelectNodes(xPath)?.Nodes() ?? new List<HtmlNode>();
         }
     }
 
