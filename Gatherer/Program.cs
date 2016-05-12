@@ -10,7 +10,8 @@ namespace Gatherer
     enum SiteType
     {
         GUARDIAN,
-        REGISTER
+        REGISTER,
+        INSIDER
     }
 
     abstract class Site
@@ -50,6 +51,47 @@ namespace Gatherer
 
         public abstract IEnumerable<string> GetNewArticles();
         public abstract bool GetContent(out string content);
+    }
+
+    class Insider : Site
+    {
+        public override int SymbolLimit { get { return 600 * 5; } }
+        public override string Name { get { return "Insider"; } }
+        public override Encoding PageEncoding { get { return Encoding.UTF8; } }
+        public override string Language { get { return "English"; } }
+
+        public Insider(string basePage, string section) : base(basePage, section) { }
+
+        public override IEnumerable<string> GetNewArticles()
+        {
+            HtmlDocument htmlDocument = GetPage(basePage + section);
+            var newLinks = from a in htmlDocument.DocumentNode.Descendants("a")
+                           where a.Attributes.Contains("href") &&
+                                 a.Attributes.Contains("class") &&
+                                 a.Attributes["class"].Value == "title" &&
+                                 a.Attributes["href"].Value.Contains("www.businessinsider.com")
+                           select a.Attributes["href"].Value;
+            return newLinks;
+        }
+
+        public override bool GetContent(out string content)
+        {
+            HtmlDocument htmlDocument = GetPage(basePage + section);
+            // Get headline
+            HtmlNode headline = htmlDocument.DocumentNode
+                .SelectSingleNode("//div[contains(@class, 'sl-layout-post')]/h1");
+            string header = headline?.InnerText ?? "";
+
+            // Get article
+            var text = string.Join(
+                Environment.NewLine,
+                (from p in htmlDocument.DocumentNode
+                    .SelectNodeList("//div[contains(@class,'KonaBody post-content')]/p")
+                 select p.InnerText));
+
+            content = header + Environment.NewLine + text;
+            return content.Length >= SymbolLimit;
+        }
     }
 
     class Guardian : Site
@@ -155,6 +197,9 @@ namespace Gatherer
                 case SiteType.REGISTER:
                     site = new Register(basePage, section);
                     break;
+                case SiteType.INSIDER:
+                    site = new Insider(basePage, section);
+                    break;
                 default:
                     throw new NotImplementedException("Wrong site type");
             }
@@ -175,7 +220,8 @@ namespace Gatherer
         private static List<KeyValuePair<SiteType, string>> siteList = new List<KeyValuePair<SiteType, string>>
             {
                 new KeyValuePair<SiteType, string>(SiteType.GUARDIAN, "http://www.theguardian.com/uk-news"),
-                new KeyValuePair<SiteType, string>(SiteType.REGISTER, "http://www.theregister.co.uk/")
+                new KeyValuePair<SiteType, string>(SiteType.REGISTER, "http://www.theregister.co.uk/"),
+                new KeyValuePair<SiteType, string>(SiteType.INSIDER, "http://www.businessinsider.com/")
             };
 
         private static DB database = new DB("projects.db");
