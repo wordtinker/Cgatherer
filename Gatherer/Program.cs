@@ -90,6 +90,7 @@ namespace Gatherer
                  select p.InnerText));
 
             content = header + Environment.NewLine + text;
+            Console.WriteLine("Content length: {0}", content.Length);
             return content.Length >= SymbolLimit;
         }
     }
@@ -130,6 +131,7 @@ namespace Gatherer
                  select p.InnerText));
 
             content = header + Environment.NewLine + text;
+            Console.WriteLine("Content length: {0}", content.Length);
             return content.Length >= SymbolLimit;
         }
     }
@@ -180,6 +182,7 @@ namespace Gatherer
                 nextPage.GetContent(out nextPageContent);
                 content = content + Environment.NewLine + nextPageContent;
             }
+            Console.WriteLine("Content length: {0}", content.Length);
             return content.Length >= SymbolLimit;
         }
     }
@@ -232,10 +235,12 @@ namespace Gatherer
             foreach (var item in siteList)
             {
                 Site site = SiteFactory.CreateSite(item.Key, item.Value);
-                foreach (string link in site.GetNewArticles())
+                List<string> newLinks = site.GetNewArticles().ToList();
+                foreach (string link in newLinks)
                 {
                     database.AddPAge((int)item.Key, link);
                 }
+                Console.WriteLine("Got {0} new links.", newLinks.Count);
             }
 
             // 2. Rip articles from fresh links
@@ -250,9 +255,11 @@ namespace Gatherer
                     string fileName = Path.Combine(dirName, rec.Id.ToString() + ".txt");
                     Directory.CreateDirectory(dirName);
                     File.WriteAllText(fileName, content);
+                    Console.WriteLine("Writing to DB.");
                 }
                 // update DB
                 database.SetVisited(rec.Link);
+                Console.WriteLine();
             }
         }
 
@@ -261,6 +268,8 @@ namespace Gatherer
             try
             {
                 MainMethod();
+                Console.WriteLine("Every link is gathered.");
+                Console.ReadKey();
             }
             catch (Exception e)
             {
