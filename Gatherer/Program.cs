@@ -11,7 +11,8 @@ namespace Gatherer
     {
         GUARDIAN,
         REGISTER,
-        INSIDER
+        INSIDER,
+        IoT
     }
 
     abstract class Site
@@ -55,7 +56,7 @@ namespace Gatherer
 
     class Insider : Site
     {
-        public override int SymbolLimit { get { return 600 * 5; } }
+        public override int SymbolLimit { get { return 600 * 2; } }
         public override string Name { get { return "Insider"; } }
         public override Encoding PageEncoding { get { return Encoding.UTF8; } }
         public override string Language { get { return "English"; } }
@@ -186,6 +187,44 @@ namespace Gatherer
             return content.Length >= SymbolLimit;
         }
     }
+    class IoT : Site
+    {
+        public override int SymbolLimit { get => 300 * 5; }
+        public override string Name { get => "IoTTechNews"; }
+        public override Encoding PageEncoding { get => Encoding.UTF8; }
+        public override string Language { get => "english"; }
+
+        public IoT(string basePage, string section) : base(basePage, section) { }
+
+        public override IEnumerable<string> GetNewArticles()
+        {
+            HtmlDocument htmlDocument = GetPage(basePage + section);
+            var newLinks = from article in htmlDocument.DocumentNode.Descendants("article")
+                           from a in article.Descendants("a")
+                           where a.ParentNode == article
+                           where a.Attributes.Contains("href")
+                           select $"{basePage}{a.Attributes["href"].Value}";
+            return newLinks;
+        }
+        public override bool GetContent(out string content)
+        {
+            HtmlDocument htmlDocument = GetPage(basePage + section);
+            // Get headline
+            HtmlNode headline = htmlDocument.DocumentNode
+                .SelectSingleNode("//article[contains(@class, 'news')]/h2");
+            string header = headline?.InnerText ?? "";
+            // Get article
+            var text = string.Join(
+                Environment.NewLine,
+                (from p in htmlDocument.DocumentNode
+                    .SelectNodeList("//div[contains(@class, 'content')]/p")
+                 select p.InnerText));
+
+            content = header + Environment.NewLine + text;
+            Console.WriteLine("Content length: {0}", content.Length);
+            return content.Length >= SymbolLimit;
+        }
+    }
 
     static class SiteFactory
     {
@@ -202,6 +241,9 @@ namespace Gatherer
                     break;
                 case SiteType.INSIDER:
                     site = new Insider(basePage, section);
+                    break;
+                case SiteType.IoT:
+                    site = new IoT(basePage, section);
                     break;
                 default:
                     throw new NotImplementedException("Wrong site type");
@@ -220,11 +262,12 @@ namespace Gatherer
 
     class Program
     {
-        private static List<KeyValuePair<SiteType, string>> siteList = new List<KeyValuePair<SiteType, string>>
+        private static List<(SiteType Type, string URI, string Section)> siteList = new List<(SiteType, string, string)>
             {
-                new KeyValuePair<SiteType, string>(SiteType.GUARDIAN, "http://www.theguardian.com/uk-news"),
-                new KeyValuePair<SiteType, string>(SiteType.REGISTER, "http://www.theregister.co.uk/"),
-                new KeyValuePair<SiteType, string>(SiteType.INSIDER, "http://www.businessinsider.com/")
+                (SiteType.GUARDIAN, "http://www.theguardian.com", "/uk-news"),
+                (SiteType.REGISTER, "http://www.theregister.co.uk/", ""),
+                (SiteType.INSIDER, "http://www.businessinsider.com/", ""),
+                (SiteType.IoT, "https://www.iottechnews.com", "/news/")
             };
 
         private static DB database = new DB("projects.db");
@@ -234,11 +277,11 @@ namespace Gatherer
             // 1. Gather new links
             foreach (var item in siteList)
             {
-                Site site = SiteFactory.CreateSite(item.Key, item.Value);
+                Site site = SiteFactory.CreateSite(item.Type, item.URI, item.Section);
                 List<string> newLinks = site.GetNewArticles().ToList();
                 foreach (string link in newLinks)
                 {
-                    database.AddPAge((int)item.Key, link);
+                    database.AddPAge((int)item.Type, link);
                 }
                 Console.WriteLine("Got {0} new links.", newLinks.Count);
             }
@@ -247,8 +290,7 @@ namespace Gatherer
             foreach (Record rec in database.GetUnvisistedPages())
             {
                 Site site = SiteFactory.CreateSite((SiteType)rec.ProjectId, rec.Link);
-                string content = null;
-                if (site.GetContent(out content))
+                if (site.GetContent(out string content))
                 {
                     // save to file
                     string dirName = Path.Combine(site.Language, "corpus", site.Name);

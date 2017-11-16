@@ -1,5 +1,6 @@
 Gatherer/bin/
 Gatherer/obj/
 packages
+.vs
 *.user
 *.suo
