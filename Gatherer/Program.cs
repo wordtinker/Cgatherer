@@ -293,7 +293,7 @@ namespace Gatherer
                 if (site.GetContent(out string content))
                 {
                     // save to file
-                    string dirName = Path.Combine(site.Language, "corpus", site.Name);
+                    string dirName = Path.Combine(site.Language, site.Name);
                     string fileName = Path.Combine(dirName, rec.Id.ToString() + ".txt");
                     Directory.CreateDirectory(dirName);
                     File.WriteAllText(fileName, content);
