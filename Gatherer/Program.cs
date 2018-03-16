@@ -270,10 +270,13 @@ namespace Gatherer
                 (SiteType.IoT, "https://www.iottechnews.com", "/news/")
             };
 
-        private static DB database = new DB("projects.db");
+        private static Repository database = new Repository();
 
         private static void MainMethod()
         {
+            // 0. Init
+            database.InitializeTables();
+
             // 1. Gather new links
             foreach (var item in siteList)
             {

@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Data.SQLite;
+using static Gatherer.ConnectionHelper;
 
 namespace Gatherer
 {
@@ -10,70 +12,87 @@ namespace Gatherer
         public int Id { get; set; }
     }
 
-    class DB
+    static class ConnectionHelper
     {
-        // DB connection
-        private SQLiteConnection dbConn;
-
-        public DB(string dbFile)
+        public static R Connect<R>(string connString,
+            Func<SQLiteConnection, R> f)
         {
-            string connString = string.Format("Data Source={0};", dbFile);
-            dbConn = new SQLiteConnection(connString);
-            dbConn.Open();
-            InitializeTables();
-        }
-
-        private void InitializeTables()
-        {
-            string sql = "CREATE TABLE IF NOT EXISTS articles( project INTEGER," +
-                "link TEXT PRIMARY KEY, visited BOOLEAN)";
-            using(SQLiteCommand cmd = new SQLiteCommand(sql, dbConn))
+            using (var conn = new SQLiteConnection(connString))
             {
-                cmd.ExecuteNonQuery();
+                conn.Open();
+                return f(conn);
             }
         }
+        public static List<R> ExecuteQuery<R>(string sql,
+            SQLiteConnection conn, Func<SQLiteDataReader, R> f)
+        {
+            List<R> list = new List<R>();
+            var cmd = new SQLiteCommand(sql, conn);
+            SQLiteDataReader reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                list.Add(f(reader));
+            }
+            reader.Close();
+            return list;
+        }
+        public static int ExecuteNonQuery(string sql, SQLiteConnection conn)
+        {
+            SQLiteCommand cmd = new SQLiteCommand(sql, conn);
+            return cmd.ExecuteNonQuery();
+        }
+        public static int ExecuteNonQuery(string sql, SQLiteConnection conn, params SQLiteParameter[] parameters)
+        {
+            SQLiteCommand cmd = new SQLiteCommand(sql, conn);
+            cmd.Parameters.AddRange(parameters);
+            return cmd.ExecuteNonQuery();
+        }
+    }
+
+    static class Procedures
+    {
+        public static string Init { get; } = 
+            $"CREATE TABLE IF NOT EXISTS articles( project INTEGER, link TEXT PRIMARY KEY, visited BOOLEAN)";
+        public static string AddPage { get; } =
+            $"INSERT OR IGNORE INTO articles (project, link, visited) VALUES(@prj, @link, @visited)";
+        public static string SetVisited { get; } =
+            "UPDATE articles SET visited=1 WHERE link=@link";
+        public static string GetUnvisited { get; } =
+            "SELECT rowid, project, link FROM articles WHERE visited=0";
+    }
+
+    class Repository
+    {
+        string connString = string.Format("Data Source=projects.db;");
+        public void InitializeTables()
+            => Connect(connString, conn
+                => ExecuteNonQuery(Procedures.Init, conn));
 
         public void AddPAge(int projectId, string link)
         {
-            string sql = "INSERT OR IGNORE INTO articles " +
-                "(project, link, visited) VALUES(@prj, @link, @visited)";
-            using(SQLiteCommand cmd = new SQLiteCommand(sql, dbConn))
+            SQLiteParameter[] parameters =
             {
-                cmd.Parameters.AddWithValue("@prj", projectId);
-                cmd.Parameters.AddWithValue("@link", link);
-                cmd.Parameters.AddWithValue("@visited", false);
-                cmd.ExecuteNonQuery();
-            }
-        }
-
-        public List<Record> GetUnvisistedPages()
-        {
-            List<Record> links = new List<Record>();
-            string sql = "SELECT rowid, project, link FROM articles WHERE visited=0";
-            using (SQLiteCommand cmd = new SQLiteCommand(sql, dbConn))
-            {
-                SQLiteDataReader reader =  cmd.ExecuteReader();
-                while (reader.Read())
-                {
-                    links.Add(new Record() {
-                        Id = reader.GetInt32(0),
-                        ProjectId = reader.GetInt32(1),
-                        Link = reader.GetString(2)
-                    });
-                }
-                reader.Close();
-            }
-            return links;
+                new SQLiteParameter("@prj", projectId),
+                new SQLiteParameter("@link", link),
+                new SQLiteParameter("@visited", false)
+            };
+            Connect(connString, conn
+                => ExecuteNonQuery(Procedures.AddPage, conn, parameters));
         }
 
         public void SetVisited(string url)
-        {
-            string sql = "UPDATE articles SET visited=1 WHERE link=@link";
-            using (SQLiteCommand cmd = new SQLiteCommand(sql, dbConn))
-            {
-                cmd.Parameters.AddWithValue("@link", url);
-                cmd.ExecuteNonQuery();
-            }
-        }
+            => Connect(connString, conn
+                => ExecuteNonQuery(Procedures.SetVisited, conn,
+                   new SQLiteParameter("@link", url)));
+
+        public List<Record> GetUnvisistedPages()
+            => Connect(connString, conn
+                => ExecuteQuery(Procedures.GetUnvisited, conn, reader
+                    => new Record
+                    {
+                        Id = reader.GetInt32(0),
+                        ProjectId = reader.GetInt32(1),
+                        Link = reader.GetString(2)
+                    }));
     }
 }
