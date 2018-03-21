@@ -1,17 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using LanguageExt;
+using static LanguageExt.Prelude;
+using System;
 using System.Data.SQLite;
 using static Gatherer.ConnectionHelper;
 
 namespace Gatherer
 {
-    class Record
-    {
-        public int ProjectId { get; set; }
-        public string Link { get; set; }
-        public int Id { get; set; }
-    }
-
     static class ConnectionHelper
     {
         public static R Connect<R>(string connString,
@@ -23,15 +17,15 @@ namespace Gatherer
                 return f(conn);
             }
         }
-        public static List<R> ExecuteQuery<R>(string sql,
+        public static Lst<R> ExecuteQuery<R>(string sql,
             SQLiteConnection conn, Func<SQLiteDataReader, R> f)
         {
-            List<R> list = new List<R>();
+            Lst<R> list = new Lst<R>();
             var cmd = new SQLiteCommand(sql, conn);
             SQLiteDataReader reader = cmd.ExecuteReader();
             while (reader.Read())
             {
-                list.Add(f(reader));
+                list = list.Add(f(reader));
             }
             reader.Close();
             return list;
@@ -61,14 +55,18 @@ namespace Gatherer
             "SELECT rowid, project, link FROM articles WHERE visited=0";
     }
 
-    class Repository
+    static class Repository
     {
-        string connString = string.Format("Data Source=projects.db;");
-        public void InitializeTables()
-            => Connect(connString, conn
-                => ExecuteNonQuery(Procedures.Init, conn));
+        static string connString = string.Format("Data Source=projects.db;");
 
-        public void AddPAge(int projectId, string link)
+        public static Try<Unit> InitializeTables() => () =>
+        {
+            Connect(connString, conn
+                => ExecuteNonQuery(Procedures.Init, conn));
+            return unit;
+        };
+
+        public static Try<Unit> AddPage(int projectId, string link) => () =>
         {
             SQLiteParameter[] parameters =
             {
@@ -78,21 +76,24 @@ namespace Gatherer
             };
             Connect(connString, conn
                 => ExecuteNonQuery(Procedures.AddPage, conn, parameters));
-        }
+            return unit;
+        };
 
-        public void SetVisited(string url)
-            => Connect(connString, conn
+        public static Try<Unit> SetVisited(string url) => () =>
+        {
+            Connect(connString, conn
                 => ExecuteNonQuery(Procedures.SetVisited, conn,
                    new SQLiteParameter("@link", url)));
+            return unit;
+        };
 
-        public List<Record> GetUnvisistedPages()
+        public static Try<Lst<(int Id, int ProjectId, string Link)>> GetUnvisistedPages() => ()
             => Connect(connString, conn
                 => ExecuteQuery(Procedures.GetUnvisited, conn, reader
-                    => new Record
-                    {
-                        Id = reader.GetInt32(0),
-                        ProjectId = reader.GetInt32(1),
-                        Link = reader.GetString(2)
-                    }));
+                    =>(
+                        Id: reader.GetInt32(0),
+                        ProjectId: reader.GetInt32(1),
+                        Link: reader.GetString(2)
+                    )));
     }
 }
