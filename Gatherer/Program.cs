@@ -24,23 +24,31 @@ namespace Gatherer
         };
 
         // with early return
+        private static Try<Unit> SaveArticle(IDescriptor desc, string content)
+            => Combine(desc.Language, desc.Name, desc.Id.ToString())
+               .Match(
+                    p => WriteFile(p, content),
+                    ex => throw ex);
+
+        // with early return
         private static Try<int> UpdateArticles(Lst<(IDescriptor desc, Option<string> content)> articles) => () =>
         {
-            articles.Iter(t => SetVisited(t.desc.URI));
+            articles.Iter(t
+                => SetVisited(t.desc.URI)
+                   .Match(_ => _, ex => throw ex));
             return articles.Count;
         };
 
         // with early return
         private static Try<Lst<(IDescriptor desc, Option<string> content)>> SaveArticles(Lst<(IDescriptor desc, Option<string> content)> articles) => () =>
         {
-            articles
-            .Iter(t =>
-            {
-                t.content.Match(
-                    Some: val => Combine(t.desc.Language, t.desc.Name, t.desc.Id.ToString())
-                                 .Bind(path => WriteFile(path, val)),
-                    None: () => { });
-            });
+            articles.Iter(t => t.content.Match(
+                Some: val => SaveArticle(t.desc, val)
+                    .Match(
+                        _ => _,
+                        ex => throw ex),
+                None: () => { })
+            );
             return articles;
         };
 
@@ -133,8 +141,6 @@ namespace Gatherer
                     WriteLine("Every link is gathered.");
                     ReadKey();
                 });
-            // TODO test
-            // TODO test throwing from low levels
         }
     }
 }
