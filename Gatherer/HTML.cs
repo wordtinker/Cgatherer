@@ -2,7 +2,6 @@
 using LanguageExt;
 using System;
 using System.Text;
-using static System.Console;
 
 namespace Gatherer
 {
@@ -16,10 +15,6 @@ namespace Gatherer
 
         private static Try<HtmlDocument> GetPage(string url, Encoding encoding) => () =>
         {
-            // that makes function impure
-            // should be mitigated by pipeline ?
-            // or by async progress handler ?
-            WriteLine("Getting {0}", url);
             HtmlWeb htmlWeb = new HtmlWeb()
             {
                 AutoDetectEncoding = false,

@@ -39,10 +39,12 @@ namespace Gatherer
                     {
                         SaveArticle(t.desc, val).IfFailThrow();
                         SetVisited(t.desc.URI).IfFailThrow();
+                        WriteLine("Got {0}", t.desc.URI);
                     },
                     None: () =>
                     {
                         SetVisited(t.desc.URI).IfFailThrow();
+                        WriteLine("Skipped {0}", t.desc.URI);
                     }));
             return articles.Count;
         };
