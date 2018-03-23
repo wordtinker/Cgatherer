@@ -31,91 +31,73 @@ namespace Gatherer
                     ex => throw ex);
 
         // with early return
-        private static Try<int> UpdateArticles(Lst<(IDescriptor desc, Option<string> content)> articles) => () =>
+        private static Try<int> SaveAndUpdate(Seq<(IDescriptor desc, Option<string> content)> articles) => () =>
         {
             articles.Iter(t
-                => SetVisited(t.desc.URI)
-                   .Match(_ => _, ex => throw ex));
+                => t.content.Match(
+                    Some: val =>
+                    {
+                        SaveArticle(t.desc, val).IfFailThrow();
+                        SetVisited(t.desc.URI).IfFailThrow();
+                    },
+                    None: () =>
+                    {
+                        SetVisited(t.desc.URI).IfFailThrow();
+                    }));
             return articles.Count;
         };
 
-        // with early return
-        private static Try<Lst<(IDescriptor desc, Option<string> content)>> SaveArticles(Lst<(IDescriptor desc, Option<string> content)> articles) => () =>
-        {
-            articles.Iter(t => t.content.Match(
-                Some: val => SaveArticle(t.desc, val)
-                    .Match(
-                        _ => _,
-                        ex => throw ex),
-                None: () => { })
-            );
-            return articles;
-        };
-
-        private static Try<Lst<(IDescriptor desc, Option<string> content)>> SeparateContent(Lst<(IDescriptor desc, string content)> articles) => ()
+        private static Try<Seq<(IDescriptor desc, Option<string> content)>>
+            SeparateContent(Seq<(IDescriptor desc, string content)> articles) => ()
             => articles.Map(t
                 => t.content.Length >= t.desc.SymbolLimit
                     ? (t.desc, Some(t.content))
                     : (t.desc, None));
 
         // with early return
-        private static Try<int> AddPages(Lst<(IDescriptor desc, string link)> links) => () =>
+        private static Try<int> AddPages(Seq<(IDescriptor desc, string link)> links) => () =>
         {
-            links.Iter(t
-                => AddPage((int)t.desc.Type, t.link)
-                    .Match(
-                        Fail: ex => throw ex,
-                        Succ: _ => _));
+            links.Iter(t => AddPage((int)t.desc.Type, t.link).IfFailThrow());
             return links.Count;
         };
 
         // with early return
-        private static Try<Lst<(IDescriptor desc, string content)>> DescriptorsToContent(Lst<IDescriptor> descriptors) => ()
+        private static Try<Seq<(IDescriptor desc, string content)>> DescriptorsToContent(Seq<IDescriptor> descriptors) => ()
             => descriptors.Map(d
-                => GetContent(d.URI, d.PageEncoding, d.GetContent)
-                   .Match(
-                       Fail: ex => throw ex,
-                       Succ: content => (d, content)));
+                => (d, GetContent(d.URI, d.PageEncoding, d.GetContent)
+                       .IfFailThrow()));
 
         // with early return
-        private static Try<Lst<(IDescriptor desc, string link)>> DescriptorsToLinks(Lst<IDescriptor> descriptors) => ()
-            => descriptors.Bind(d 
+        private static Try<Seq<(IDescriptor desc, string link)>> DescriptorsToLinks(Seq<IDescriptor> descriptors) => ()
+            => Seq(descriptors.Bind(d
                 => GetContent(d.URI, d.PageEncoding, d.GatherArticles)
-                   .Match(
-                       Fail: ex => throw ex,
-                       Succ: links => links)
-                   .Map(links => (d, links)));
+                   .IfFailThrow()
+                   .Map(links => (d, links))));
 
         // with early return
-        private static Try<Lst<IDescriptor>> ListToDescriptors(Lst<(SiteType Type, string URI, string Section)> sites) => ()
+        private static Try<Seq<IDescriptor>> ListToDescriptors(Seq<(SiteType Type, string URI, string Section)> sites) => ()
             => sites.Map(item
                 => ToSiteDescriptor(item.Type, item.URI, item.Section)
-                   .Match(
-                       Fail: ex => throw ex,
-                       Succ: desc => desc));
+                   .IfFailThrow());
 
         // with early return
-        private static Try<Lst<IDescriptor>> ListToDescriptors(Lst<(int Id, int ProjectId, string Link)> sites) => ()
+        private static Try<Seq<IDescriptor>> ListToDescriptors(Seq<(int Id, int ProjectId, string Link)> sites) => ()
             => sites.Map(item
                 => ToSiteDescriptor((SiteType)item.ProjectId, item.Link, id: item.Id)
-                   .Match(
-                       Fail: ex => throw ex,
-                       Succ: desc => desc));
+                   .IfFailThrow());
 
-        private static Try<int> GatherNewLinks(Lst<(SiteType Type, string URI, string Section)> sites)
+        private static Try<int> GatherNewLinks(Seq<(SiteType Type, string URI, string Section)> sites)
             => ListToDescriptors(sites)
                .Bind(DescriptorsToLinks)
                .Bind(AddPages);
 
         private static Try<int> ReadArticles()
-            => GetUnvisistedPages()
-               .Bind(ListToDescriptors)
+            => ListToDescriptors(Seq(GetUnvisistedPages().IfFailThrow()))
                .Bind(DescriptorsToContent)
                .Bind(SeparateContent)
-               .Bind(SaveArticles)
-               .Bind(UpdateArticles);
+               .Bind(SaveAndUpdate);
 
-        private static Try<Unit> MainMethod(Lst<(SiteType, string, string)> sites)
+        private static Try<Unit> MainMethod(Seq<(SiteType, string, string)> sites)
             => InitializeTables()
                .Bind(_ => GatherNewLinks(sites))
                .Bind(PrintGatheredLinks)
@@ -130,7 +112,7 @@ namespace Gatherer
                 (SiteType.INSIDER, "http://www.businessinsider.com/", "")
             );
 
-            MainMethod(sites).Match(
+            MainMethod(Seq(sites)).Match(
                 Fail: ex =>
                 {
                     WriteLine(ex.Message);
