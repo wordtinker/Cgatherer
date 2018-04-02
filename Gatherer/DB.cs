@@ -1,8 +1,7 @@
-﻿using LanguageExt;
-using static LanguageExt.Prelude;
-using System;
+﻿using System;
 using System.Data.SQLite;
 using static Gatherer.ConnectionHelper;
+using System.Collections.Generic;
 
 namespace Gatherer
 {
@@ -17,15 +16,15 @@ namespace Gatherer
                 return f(conn);
             }
         }
-        public static Lst<R> ExecuteQuery<R>(string sql,
+        public static List<R> ExecuteQuery<R>(string sql,
             SQLiteConnection conn, Func<SQLiteDataReader, R> f)
         {
-            Lst<R> list = new Lst<R>();
+            List<R> list = new List<R>();
             var cmd = new SQLiteCommand(sql, conn);
             SQLiteDataReader reader = cmd.ExecuteReader();
             while (reader.Read())
             {
-                list = list.Add(f(reader));
+                list.Add(f(reader));
             }
             reader.Close();
             return list;
@@ -59,14 +58,10 @@ namespace Gatherer
     {
         static string connString = string.Format("Data Source=projects.db;");
 
-        public static Try<Unit> InitializeTables() => () =>
-        {
-            Connect(connString, conn
+        public static void InitializeTables()
+            => Connect(connString, conn
                 => ExecuteNonQuery(Procedures.Init, conn));
-            return unit;
-        };
-
-        public static Try<Unit> AddPage(int projectId, string link) => () =>
+        public static void AddPage(int projectId, string link)
         {
             SQLiteParameter[] parameters =
             {
@@ -76,18 +71,12 @@ namespace Gatherer
             };
             Connect(connString, conn
                 => ExecuteNonQuery(Procedures.AddPage, conn, parameters));
-            return unit;
-        };
-
-        public static Try<Unit> SetVisited(string url) => () =>
-        {
-            Connect(connString, conn
+        }
+        public static void SetVisited(string url)
+            => Connect(connString, conn
                 => ExecuteNonQuery(Procedures.SetVisited, conn,
                    new SQLiteParameter("@link", url)));
-            return unit;
-        };
-
-        public static Try<Lst<(int Id, int ProjectId, string Link)>> GetUnvisistedPages() => ()
+        public static List<(int Id, int ProjectId, string Link)> GetUnvisistedPages()
             => Connect(connString, conn
                 => ExecuteQuery(Procedures.GetUnvisited, conn, reader
                     =>(

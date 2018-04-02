@@ -7,13 +7,7 @@ namespace Gatherer
 {
     static class HTML
     {
-        public static Try<T>
-            GetContent<T>(string uri, Encoding encoding,
-                       Func<HtmlDocument, Try<T>> parserf)
-            => GetPage(uri, encoding)
-               .Bind(doc => parserf(doc));
-
-        private static Try<HtmlDocument> GetPage(string url, Encoding encoding) => () =>
+        public static HtmlDocument GetPage(string url, Encoding encoding)
         {
             HtmlWeb htmlWeb = new HtmlWeb()
             {
@@ -21,6 +15,6 @@ namespace Gatherer
                 OverrideEncoding = encoding
             };
             return htmlWeb.Load(url);
-        };
+        }
     }
 }
