@@ -86,6 +86,7 @@
     <Compile Include="Sites\Factory.cs" />
     <Compile Include="Sites\Guardian.cs" />
     <Compile Include="Sites\Insider.cs" />
+    <Compile Include="Sites\ITBusiness.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
