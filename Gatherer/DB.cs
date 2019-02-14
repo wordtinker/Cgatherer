@@ -44,7 +44,7 @@ namespace Gatherer
 
     static class Procedures
     {
-        public static string Init { get; } = 
+        public static string Init { get; } =
             $"CREATE TABLE IF NOT EXISTS articles( project INTEGER, link TEXT PRIMARY KEY, visited BOOLEAN)";
         public static string AddPage { get; } =
             $"INSERT OR IGNORE INTO articles (project, link, visited) VALUES(@prj, @link, @visited)";
@@ -79,7 +79,7 @@ namespace Gatherer
         public static List<(int Id, int ProjectId, string Link)> GetUnvisistedPages()
             => Connect(connString, conn
                 => ExecuteQuery(Procedures.GetUnvisited, conn, reader
-                    =>(
+                    => (
                         Id: reader.GetInt32(0),
                         ProjectId: reader.GetInt32(1),
                         Link: reader.GetString(2)

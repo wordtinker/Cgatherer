@@ -23,8 +23,8 @@ namespace Gatherer.Sites
         {
             var newLinks =
                 (from a in doc.DocumentNode.SelectSingleNode("//div[contains(@class, 'list-story')]").Descendants("a")
-                where a.Attributes.Contains("href")
-                select a.Attributes["href"].Value).Distinct();
+                 where a.Attributes.Contains("href")
+                 select a.Attributes["href"].Value).Distinct();
             return new Lst<string>(newLinks);
         };
         private static Try<string> GetContent(HtmlDocument doc) => () =>

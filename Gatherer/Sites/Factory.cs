@@ -1,5 +1,4 @@
 ﻿using System;
-using static Gatherer.Sites.InsiderSite;
 using static Gatherer.Sites.GuardianSite;
 using static Gatherer.Sites.ITBusinessSite;
 using LanguageExt;
@@ -19,7 +18,6 @@ namespace Gatherer.Sites
     enum SiteType
     {
         GUARDIAN,
-        INSIDER,
         ITBUSINESS
     }
     interface IDescriptor
@@ -62,9 +60,6 @@ namespace Gatherer.Sites
             {
                 case SiteType.GUARDIAN:
                     site = Guardian;
-                    break;
-                case SiteType.INSIDER:
-                    site = Insider;
                     break;
                 case SiteType.ITBUSINESS:
                     site = ITBusiness;

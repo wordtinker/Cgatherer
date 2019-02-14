@@ -110,14 +110,14 @@ namespace Gatherer
                .Bind(PrintGatheredLinks)
                .Bind(_ => ReadArticles())
                .Bind(PrintSavedArticles);
-        
+
         static void Main(string[] args)
         {
             Lst<(SiteType Type, string URI, string Section)> sites = List
             (
                 (SiteType.GUARDIAN, "http://www.theguardian.com", "/uk-news"),
                 (SiteType.ITBUSINESS, "https://www.itbusiness.ca", "/news")
-                //(SiteType.INSIDER, "http://www.businessinsider.com/", "")
+            //(SiteType.INSIDER, "http://www.businessinsider.com/", "")
             );
 
             MainMethod(Seq(sites)).Match(

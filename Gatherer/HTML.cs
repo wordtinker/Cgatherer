@@ -1,6 +1,4 @@
 ﻿using HtmlAgilityPack;
-using LanguageExt;
-using System;
 using System.Text;
 
 namespace Gatherer
