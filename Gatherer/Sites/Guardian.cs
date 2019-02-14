@@ -10,15 +10,15 @@ namespace Gatherer.Sites
     {
         public static Descriptor Guardian
             => new Descriptor
-            {
-                Type = SiteType.GUARDIAN,
-                SymbolLimit = 600 * 5,
-                Name = "Guardian",
-                PageEncoding = Encoding.UTF8,
-                Language = "English",
-                GatherArticles = GatherArticles,
-                GetContent = GetContent
-            };
+            (
+                type: SiteType.GUARDIAN,
+                symbolLimit: 600 * 5,
+                name: "Guardian",
+                pageEncoding: Encoding.UTF8,
+                language: "English",
+                gatherArticles: GatherArticles,
+                getContent: GetContent
+            );
         private static Try<Lst<string>> GatherArticles(HtmlDocument doc) => () =>
         {
             var newLinks =

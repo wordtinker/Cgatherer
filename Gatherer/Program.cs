@@ -117,7 +117,6 @@ namespace Gatherer
             (
                 (SiteType.GUARDIAN, "http://www.theguardian.com", "/uk-news"),
                 (SiteType.ITBUSINESS, "https://www.itbusiness.ca", "/news")
-            //(SiteType.INSIDER, "http://www.businessinsider.com/", "")
             );
 
             MainMethod(Seq(sites)).Match(

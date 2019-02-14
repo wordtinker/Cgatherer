@@ -22,7 +22,7 @@ namespace Gatherer.Sites
     }
     interface IDescriptor
     {
-        SiteType Type { get; set; }
+        SiteType Type { get; }
         int Id { get; set; }
         string BasePage { get; set; }
         string Section { get; set; }
@@ -30,31 +30,45 @@ namespace Gatherer.Sites
         /// <summary>
         /// Minimum amount of symbols in the article to be gathered.
         /// </summary>
-        int SymbolLimit { get; set; }
-        string Name { get; set; }
-        Encoding PageEncoding { get; set; }
-        string Language { get; set; }
-        Func<HtmlDocument, Try<Lst<string>>> GatherArticles { get; set; }
-        Func<HtmlDocument, Try<string>> GetContent { get; set; }
+        int SymbolLimit { get; }
+        string Name { get; }
+        Encoding PageEncoding { get; }
+        string Language { get; }
+        Func<HtmlDocument, Try<Lst<string>>> GatherArticles { get; }
+        Func<HtmlDocument, Try<string>> GetContent { get; }
     }
     class Descriptor : IDescriptor
     {
-        public SiteType Type { get; set; }
+        public SiteType Type { get; }
         public int Id { get; set; }
-        public string BasePage { get; set; }
-        public string Section { get; set; }
+        public string BasePage { get; set; } = String.Empty;
+        public string Section { get; set; } = String.Empty;
         public string URI => BasePage + Section;
-        public int SymbolLimit { get; set; }
-        public string Name { get; set; }
-        public Encoding PageEncoding { get; set; }
-        public string Language { get; set; }
-        public Func<HtmlDocument, Try<Lst<string>>> GatherArticles { get; set; }
-        public Func<HtmlDocument, Try<string>> GetContent { get; set; }
+        public int SymbolLimit { get; }
+        public string Name { get; }
+        public Encoding PageEncoding { get; }
+        public string Language { get; }
+        public Func<HtmlDocument, Try<Lst<string>>> GatherArticles { get; }
+        public Func<HtmlDocument, Try<string>> GetContent { get; }
+
+        public Descriptor(SiteType type, int symbolLimit, string name, Encoding pageEncoding, string language,
+            Func<HtmlDocument, Try<Lst<string>>> gatherArticles, Func<HtmlDocument, Try<string>> getContent)
+        {
+            Type = type;
+            SymbolLimit = symbolLimit;
+            Name = name;
+            PageEncoding = pageEncoding;
+            Language = language;
+            GatherArticles = gatherArticles;
+            GetContent = getContent;
+        }
     }
     static class SiteFactory
     {
-        public static Try<IDescriptor> ToSiteDescriptor(SiteType siteType, string basePage, string section = default, int id = default) => () =>
+        public static Try<IDescriptor> ToSiteDescriptor(SiteType siteType, string basePage, string section = "", int id = default) => () =>
         {
+            // TODO: see C# 8.0 switch expression when it's ready
+            // Descriptor site = siteType switch {patt => res, , _ => throw}
             Descriptor site = null;
             switch (siteType)
             {

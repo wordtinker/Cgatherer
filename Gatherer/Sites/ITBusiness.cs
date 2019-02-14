@@ -10,15 +10,15 @@ namespace Gatherer.Sites
     {
         public static Descriptor ITBusiness
             => new Descriptor
-            {
-                Type = SiteType.ITBUSINESS,
-                SymbolLimit = 600 * 5,
-                Name = "ITBusiness",
-                PageEncoding = Encoding.UTF8,
-                Language = "English",
-                GatherArticles = GatherArticles,
-                GetContent = GetContent
-            };
+            (
+                type: SiteType.ITBUSINESS,
+                symbolLimit: 600 * 5,
+                name: "ITBusiness",
+                pageEncoding: Encoding.UTF8,
+                language: "English",
+                gatherArticles: GatherArticles,
+                getContent: GetContent
+            );
         private static Try<Lst<string>> GatherArticles(HtmlDocument doc) => () =>
         {
             var newLinks =
